@@ -1,0 +1,97 @@
+server:
+  port: 9000
+  netty:
+    connection-timeout: 2s
+    idle-timeout: 15s
+  shutdown: graceful
+
+spring:
+  application:
+    name: careerwry-edge
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+  config:
+    import: "optional:configserver:"
+  cloud:
+    gateway:
+      default-filters: # 기본 필터 목록
+        - SaveSession # 요청을 서비스로 전달하기 전에 세션 데이터를 저장한다
+        - TokenRelay # 다른 서비스를 호출할 때 액세스 토큰 전달을 활성화한다
+        - name: Retry # 재시도 필터
+          args:
+            retries: 3
+            methods: GET
+            series: SERVER_ERROR
+            exceptions: java.io.IOException, java.util.concurrent.TimeoutException
+            backoff:
+              firstBackoff: 50ms # 재시도 공식에 사용할 초기 백오프
+              maxBackOff: 500ms
+              factor: 2 # 재시도 공식에 사용할 지수
+              basedOnPreviousValue: false
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter:
+              replenishRate: 10 # 초당 버킷에 떨어지는 토큰의 수
+              burstCapacity: 20
+              requestedTokens: 1 # 하나의 요청 처리에 몇 개의 토큰이 사용되는 지 지정
+
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 5s
+        pool:
+          type: elastic
+          max-idle-time: 15s
+          max-life-time: 60s
+
+      routes:
+        - id: member-route
+          uri: ${MEMBER_SERVICE_URL:http://localhost:9001/members} # 환경변수, 환경변수 없으면 : 뒤의 값을 기본으로 사용
+          predicates:
+            - Path=/members/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderCircuitBreaker # 서킷 브레이커 이름 , 폴백 URI 가 없는 시나리오
+      redis-rate-limiter:
+        include-headers: true # 기본이 false, 사용률 제한 관련 정보를 포함한 헤더를 응답에 포함할지 결정할 수 있다.
+
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak: # 식별자
+            client-id: careerwry-edge
+            client-secret: careerwry-keycloak-secret
+            scope: # 클라이언트가 접근 권한을 갖기 원하는 영역의 목록. OIDC를 사용하기 위해서는 범위를 openid로 설정하고 이를 인증서버에 알려야만 한다.
+              - openid
+        provider:
+          keycloak: # 위의 식별자와 동일하여야 한다
+            issuer-uri: http://localhost:8080/realms/careerwry
+  data:
+    redis:
+      connect-timeout: 2s
+      host: localhost
+      port: 6379
+      timeout: 1s
+
+  session:
+    timeout: 10m
+    redis:
+      namespace: careerwry:edge
+
+resilience4j:
+  circuitbreaker:
+    configs: # 모든 서킷 브레이커에 대한 기본 설정
+      default:
+        sliding-window-size: 20 # 회로 폐쇄 상태일 때 호출의 결과를 기록하는 슬라이딩 윈도 크기
+        permitted-number-of-calls-in-half-open-state: 10 # 회로가 반개방일 때 허용되는 호출의 수
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15000 # 개방에서 반개방 상태로 갈 때까지 기다리는 시간
+  timelimiter:
+    configs: # 모든 시간 제한에 대한 기본 설정, 네티 클라이언트에서 정의한 타임아웃보다 높은 우선순위를 갖는다
+      default:
+        timeout-duration: 5s
+
+logging:
+  level:
+    io.github.resilience4j: DEBUG
