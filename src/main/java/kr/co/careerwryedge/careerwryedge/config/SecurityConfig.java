@@ -15,6 +15,9 @@ import org.springframework.security.web.server.authentication.HttpStatusServerEn
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.reactive.CorsConfigurationSource;
+import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
@@ -34,7 +37,7 @@ public class SecurityConfig {
         http
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/", "/*.css", "/*.js", "favicon.ico").permitAll()
-                        .pathMatchers(HttpMethod.GET, "/feeds").permitAll()
+                        .pathMatchers(HttpMethod.GET, "/posts").permitAll()
                         .anyExchange().permitAll())
                 .exceptionHandling(exceptionHandling -> exceptionHandling
                         .authenticationEntryPoint(new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)))
@@ -43,6 +46,8 @@ public class SecurityConfig {
                         logout.logoutSuccessHandler(oidcLogoutSuccessHandler(clientRegistrationRepository)))
                 .csrf(csrf ->
                         csrf.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse()))
+                .cors(cors ->
+                        cors.configurationSource(corsConfiguration())) // CORS 설정 추가
         ;
         return http.build();
     }
@@ -56,6 +61,17 @@ public class SecurityConfig {
             }));
             return chain.filter(exchange);
         };
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfiguration() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.addAllowedOrigin("*"); // 모든 도메인
+        configuration.addAllowedMethod("*"); // 모든 HTTP 메서드를 허용
+        configuration.addAllowedHeader("*"); // 모든 헤더를 허용
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     private ServerLogoutSuccessHandler oidcLogoutSuccessHandler(ReactiveClientRegistrationRepository clientRegistrationRepository) {
