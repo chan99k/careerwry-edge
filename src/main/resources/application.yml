@@ -45,6 +45,13 @@ spring:
           max-life-time: 60s
 
       routes:
+        - id: posting-route
+          uri: lb://careerwry-posting
+          order: 1
+          predicates:
+            - Path=/posts/** # 특정 경로로 오는 요청을 처리
+#          filters:
+#            - RewritePath=/posts/(?<segment>.*),/v1/posts/$\{segment}
         - id: member-route
           uri: ${MEMBER_SERVICE_URL:http://localhost:9001/members} # 환경변수, 환경변수 없으면 : 뒤의 값을 기본으로 사용
           predicates:
@@ -65,9 +72,12 @@ spring:
             client-secret: careerwry-keycloak-secret
             scope: # 클라이언트가 접근 권한을 갖기 원하는 영역의 목록. OIDC를 사용하기 위해서는 범위를 openid로 설정하고 이를 인증서버에 알려야만 한다.
               - openid
+              - profile_nickname
+              - profile_image
+              - account_email
         provider:
           keycloak: # 위의 식별자와 동일하여야 한다
-            issuer-uri: http://localhost:8080/realms/careerwry
+            issuer-uri: http://host.docker.internal:8080/realms/careerwry
   data:
     redis:
       connect-timeout: 2s
@@ -96,3 +106,35 @@ resilience4j:
 logging:
   level:
     io.github.resilience4j: DEBUG
+
+eureka:
+  client:
+    service-url:
+        defaultZone: http://host.docker.internal:9999/eureka/
+    registerWithEureka: true
+    fetchRegistry: true
+    rest-template-timeout:
+      connect-timeout: 5000
+      connect-request-timeout: 8000
+      socket-timeout: 10000
+
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    propagation:
+      consume: b3
+      produce: b3_multi
+
+  endpoints:
+    web:
+      exposure:
+        include:
+          - info
+          - health
+          - loggers
+          - mappings
+          - metrics
+          - shutdown
+          - prometheus

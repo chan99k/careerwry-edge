@@ -1,0 +1,25 @@
+graph LR
+;
+    subgraph "Front-end"
+        fe[(Front-end Application)]
+    end
+    subgraph "API Gateway (Edge Service)"
+        gw((Router))
+    end
+    subgraph "member-api"
+        member[(Member API)]
+    end
+    subgraph "posting-api"
+        posting[(Posting API)]
+    end
+%%    subgraph "redis"
+%%        session[("redis")]
+%%    end
+    fe --> gw
+    gw --> member
+    gw --> posting
+%%    gw --> session
+%%    session --> gw
+
+;
+
