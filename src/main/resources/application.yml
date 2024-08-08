@@ -70,14 +70,12 @@ spring:
           keycloak: # 식별자
             client-id: careerwry-edge
             client-secret: careerwry-keycloak-secret
-            scope: # 클라이언트가 접근 권한을 갖기 원하는 영역의 목록. OIDC를 사용하기 위해서는 범위를 openid로 설정하고 이를 인증서버에 알려야만 한다.
-              - openid
-              - profile_nickname
-              - profile_image
-              - account_email
+            redirect-uri: http://localhost:9000/login/oauth2/code/keycloak
+            # 클라이언트가 접근 권한을 갖기 원하는 영역의 목록. OIDC를 사용하기 위해서는 범위를 openid로 설정하고 이를 인증서버에 알려야만 한다.
+            scope: openid, profile, email
         provider:
           keycloak: # 위의 식별자와 동일하여야 한다
-            issuer-uri: http://host.docker.internal:8080/realms/careerwry
+            issuer-uri: http://localhost:8080/realms/Careerwry
   data:
     redis:
       connect-timeout: 2s
