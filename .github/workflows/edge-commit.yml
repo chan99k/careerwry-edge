@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: cgk95/careerwry-edge
+  IMAGE_NAME: chan99k/careerwry-edge
   VERSION: latest
 
 jobs:
